@@ -1,131 +1,177 @@
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.math.BigInteger;
 import java.util.Random;
+import java.util.Scanner;
 
 public class Main {
 
-    static long counter = 0; // operation counter
+    static int totalOperation = 0;
 
-    public static void main(String[] args) {
-
-        // ===== SMALL INPUT (FOR PRINTING) =====
-        String str1 = "52301";
-        String str2 = "380";
-
-        System.out.println("=== DEMONSTRATION (SMALL INPUT) ===");
-        multiply(str1, str2, true);
-
-        // ===== EXPERIMENT (LARGE INPUT) =====
-        System.out.println("\n=== EXPERIMENT ===");
-
-        int[] testSizes = {5, 10, 50, 100, 200};
-
-        for (int n : testSizes) {
-            String num1 = generateRandomNumber(n);
-            String num2 = generateRandomNumber(n);
-
-            counter = 0;
-            multiply(num1, num2, false);
-
-            System.out.println("n = " + n + " → Operations = " + counter);
+    // generate random numbers
+    public static BigInteger generateRandomNumber(int digit) {
+        Random random = new Random();
+        StringBuilder sb = new StringBuilder(digit);
+        for (int i = 0; i < digit; i++) {
+            int randomDigit = i == 0 ? random.nextInt(9) + 1 : random.nextInt(10);
+            sb.append(randomDigit);
         }
+        return new BigInteger(sb.toString());
     }
 
-    // ===== CORE MULTIPLICATION FUNCTION =====
-    public static String multiply(String str1, String str2, boolean printSteps) {
+    
+    public static BigInteger multiply(BigInteger num1, BigInteger num2, int digit, boolean printSteps) {
 
-        int n1 = str1.length();
-        int n2 = str2.length();
+        int additionCounter       = 0;
+        int subtractionCounter    = 0;
+        int multiplicationCounter = 0;
+        int divideCounter         = 0;
+        int modCounter            = 0;
+        int assignmentCounter     = 0;
+        int comparisonCounter     = 0;
+        int returnCounter         = 0;
 
-        // result array (max length = n1 + n2)
-        int[] result = new int[n1 + n2];
+        BigInteger[] partialRows = new BigInteger[digit];
+        BigInteger[] carrierRows = new BigInteger[digit];
+        assignmentCounter += 2;
 
-        // loop through digits (RIGHT → LEFT)
-        for (int i = n2 - 1; i >= 0; i--) {
+        for (int i = 0; i < digit; i++) {
+            comparisonCounter += 1; additionCounter += 1; assignmentCounter += 1;
+            partialRows[i] = BigInteger.ZERO;
+            carrierRows[i] = BigInteger.ZERO;
+            assignmentCounter += 2;
+        }
 
-            int d2 = str2.charAt(i) - '0';
-            int carry = 0;
+        BigInteger result = BigInteger.ZERO;
+        assignmentCounter += 1;
 
-            int[] partial = new int[n1];   // store partial product
-            int[] carriers = new int[n1];  // store carriers
+        BigInteger num2Temp = num2;
+        assignmentCounter += 1;
 
-            for (int j = n1 - 1; j >= 0; j--) {
+        for (int i = 0; i < digit; i++) {
+            comparisonCounter += 1; additionCounter += 1; assignmentCounter += 1;
 
-                int d1 = str1.charAt(j) - '0';
+            BigInteger d2 = num2Temp.mod(BigInteger.TEN);
+            assignmentCounter += 1; modCounter += 1;
 
-                int product = d1 * d2 + carry;
-                counter += 2; // multiplication + addition
+            int[] partialDigits = new int[digit];
+            int[] carrierDigits = new int[digit];
 
-                int digit = product % 10;
-                carry = product / 10;
-                counter += 2; // modulo + division
+            BigInteger num1Temp = num1;
+            assignmentCounter += 1;
 
-                partial[j] = digit;
-                carriers[j] = carry;
+            for (int j = 0; j < digit; j++) {
+                comparisonCounter += 1; additionCounter += 1; assignmentCounter += 1;
 
-                // add to final result (with shifting)
-                result[i + j + 1] += digit;
-                counter++; // addition
+                BigInteger d1 = num1Temp.mod(BigInteger.TEN);
+                assignmentCounter += 1; modCounter += 1;
+
+                BigInteger product = d1.multiply(d2);
+                assignmentCounter += 1; multiplicationCounter += 1;
+
+                if (product.compareTo(BigInteger.TEN) < 0) {
+                    comparisonCounter += 1;
+                    partialDigits[digit - 1 - j] = product.intValue();
+                    carrierDigits[digit - 1 - j] = 0;
+                    assignmentCounter += 2;
+                } else {
+                    comparisonCounter += 1;
+                    partialDigits[digit - 1 - j] = product.mod(BigInteger.TEN).intValue();
+                    carrierDigits[digit - 1 - j] = product.divide(BigInteger.TEN).intValue();
+                    assignmentCounter += 2; modCounter += 1; divideCounter += 1;
+                }
+
+                BigInteger posVal = BigInteger.TEN.pow(j);
+                partialRows[i] = partialRows[i].add(BigInteger.valueOf(partialDigits[digit - 1 - j]).multiply(posVal));
+                carrierRows[i] = carrierRows[i].add(BigInteger.valueOf(carrierDigits[digit - 1 - j]).multiply(posVal));
+                assignmentCounter += 2; additionCounter += 2; multiplicationCounter += 2;
+
+                num1Temp = num1Temp.divide(BigInteger.TEN);
+                assignmentCounter += 1; divideCounter += 1;
             }
 
-            // handle remaining carry
-            result[i] += carry;
-            counter++;
-
-            // ===== PRINT PARTIAL + CARRIER (ONLY SMALL INPUT) =====
             if (printSteps) {
-                System.out.print("Partial products for (" + str1 + " x " + d2 + "): ");
-                for (int k = 0; k < n1; k++) {
-                    System.out.print(partial[k] + " ");
+                // Build partial and carrier strings with leading zeros preserved
+                StringBuilder pStr = new StringBuilder();
+                StringBuilder cStr = new StringBuilder();
+                for (int k = 0; k < digit; k++) {
+                    pStr.append(partialDigits[k]);
+                    cStr.append(carrierDigits[k]);
                 }
+                // Apply shift (multiply by 10^i) for display
+                String shiftPad = "0".repeat(i);
+                System.out.println(num1 + " x " + d2 + "  (shift " + i + ")");
+                System.out.println("  partials : " + pStr + shiftPad);
+                System.out.println("  carriers : " + cStr + shiftPad);
                 System.out.println();
-
-                System.out.print("Carriers: ");
-                for (int k = 0; k < n1; k++) {
-                    System.out.print(carriers[k] + " ");
-                }
-                System.out.println("\n");
             }
+
+            partialRows[i] = partialRows[i].multiply(BigInteger.TEN.pow(i));
+            carrierRows[i] = carrierRows[i].multiply(BigInteger.TEN.pow(i + 1));
+            assignmentCounter += 2; multiplicationCounter += (2 * i) + 2;
+
+            num2Temp = num2Temp.divide(BigInteger.TEN);
+            assignmentCounter += 1; divideCounter += 1;
         }
 
-        // ===== FINAL ADDITION (HANDLE CARRY) =====
-        for (int i = result.length - 1; i > 0; i--) {
-            if (result[i] >= 10) {
-                result[i - 1] += result[i] / 10;
-                result[i] %= 10;
-                counter += 2;
-            }
+        for (int i = 0; i < digit; i++) {
+            comparisonCounter += 1; additionCounter += 1; assignmentCounter += 1;
+            result = result.add(partialRows[i]).add(carrierRows[i]);
+            assignmentCounter += 1; additionCounter += 2;
         }
 
-        // convert result array to string
-        StringBuilder sb = new StringBuilder();
-        for (int num : result) {
-            if (!(sb.length() == 0 && num == 0)) {
-                sb.append(num);
-            }
-        }
-
-        String finalResult = sb.length() == 0 ? "0" : sb.toString();
+        totalOperation = additionCounter + subtractionCounter + multiplicationCounter
+                       + divideCounter + modCounter + assignmentCounter
+                       + comparisonCounter + returnCounter;
 
         if (printSteps) {
-            System.out.println("Final Result: " + finalResult);
+            System.out.println("Final result : " + result);
+            System.out.println("Operations   : " + totalOperation);
         }
 
-        return finalResult;
+        return result;
     }
 
-    // ===== RANDOM NUMBER GENERATOR =====
-    public static String generateRandomNumber(int n) {
-        Random rand = new Random();
+    //main fx
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter the number of digits (n): ");
+        int n = sc.nextInt();
 
-        StringBuilder sb = new StringBuilder();
+        BigInteger num1 = generateRandomNumber(n);
+        BigInteger num2 = generateRandomNumber(n);
 
-        // first digit cannot be 0
-        sb.append(rand.nextInt(9) + 1);
+        String divider = "-".repeat(28);
 
-        for (int i = 1; i < n; i++) {
-            sb.append(rand.nextInt(10));
+        System.out.println();
+        System.out.println("Simple Multiplication  n = " + n);
+        System.out.println(divider);
+        System.out.println("Multiplicand : " + num1);
+        System.out.println("Multiplier   : " + num2);
+        System.out.println();
+
+        totalOperation = 0;
+        multiply(num1, num2, n, true);
+
+        System.out.println(divider);
+
+        System.out.println();
+        System.out.println("=== n = 1 to " + n + " ===");
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("Multiplication.csv"))) {
+            writer.write("number of digits,total operations\n");
+
+            for (int digit = 1; digit <= n; digit++) {
+                BigInteger a = generateRandomNumber(digit);
+                BigInteger b = generateRandomNumber(digit);
+                totalOperation = 0;
+                multiply(a, b, digit, false);
+                System.out.println("  n=" + digit + "  ops=" + totalOperation + "  (" + a + " x " + b + ")");
+                writer.write(digit + "," + totalOperation + "\n");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error writing CSV: " + e.getMessage());
         }
-
-        return sb.toString();
     }
 }
-
